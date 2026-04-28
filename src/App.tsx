@@ -40,7 +40,7 @@ import {
   serverTimestamp
 } from "firebase/firestore";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { db, auth, signInWithGoogle } from "./lib/firebase";
+import { db, auth, signInWithGoogle, loginAnonymously } from "./lib/firebase";
 import { handleFirestoreError, OperationType } from "./lib/firebase-utils";
 
 function cn(...inputs: ClassValue[]) {
@@ -107,7 +107,12 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+      if (user) {
+        setCurrentUser(user);
+      } else {
+        // Automatically sign in anonymously if not logged in
+        loginAnonymously().catch(console.error);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -140,6 +145,7 @@ export default function App() {
   const [clarityLevel, setClarityLevel] = useState<"standard" | "ultra">("ultra");
   const [showCustomPromptArea, setShowCustomPromptArea] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [errorModal, setErrorModal] = useState<{show: boolean, type: string} | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -396,7 +402,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
-            {currentUser && (
+            {currentUser && !currentUser.isAnonymous && (
               <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
                 <img src={currentUser.photoURL || ""} alt="" className="w-6 h-6 rounded-full" />
                 <span className="text-xs font-bold text-gray-700">{currentUser.displayName}</span>
@@ -466,7 +472,13 @@ export default function App() {
                     </button>
 
                     <div className="my-2 border-t border-gray-50 pt-2">
-                      {currentUser ? (
+                      {loginError && (
+                        <div className="px-4 py-2 mb-2 bg-red-50 text-red-600 text-[10px] rounded-xl flex items-center gap-2">
+                          <AlertCircle size={12} />
+                          <span>{loginError}</span>
+                        </div>
+                      )}
+                      {currentUser && !currentUser.isAnonymous ? (
                         <button
                           onClick={() => {
                             auth.signOut();
@@ -481,10 +493,12 @@ export default function App() {
                         <button
                           onClick={async () => {
                             try {
+                              setLoginError(null);
                               await signInWithGoogle();
                               setIsMenuOpen(false);
-                            } catch (e) {
+                            } catch (e: any) {
                               console.error(e);
+                              setLoginError(e.message || "Login failed. Please check browser pop-up settings.");
                             }
                           }}
                           className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-indigo-600 hover:bg-indigo-50"

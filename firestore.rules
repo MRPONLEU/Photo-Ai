@@ -17,7 +17,8 @@ service cloud.firestore {
     
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == "henrythonny@gmail.com" && request.auth.token.email_verified == true
+        request.auth.token.email == "henrythonny@gmail.com" && 
+        request.auth.token.email_verified == true
       );
     }
 
@@ -28,7 +29,7 @@ service cloud.firestore {
     // Templates
     match /templates/{templateId} {
       allow read: if true; // Publicly readable
-      allow create, update, delete: if isSignedIn(); // Allow signed in users for now, or restrict to admin
+      allow create, update, delete: if isAdmin(); // Only admin can manage templates
       
       function isValidTemplate(data) {
         return data.name is string && data.name.size() > 0 &&
