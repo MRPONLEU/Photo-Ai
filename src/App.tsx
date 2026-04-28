@@ -148,6 +148,7 @@ export default function App() {
   const [showCustomPromptArea, setShowCustomPromptArea] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [errorModal, setErrorModal] = useState<{show: boolean, type: string} | null>(null);
   
@@ -212,12 +213,58 @@ export default function App() {
     }
   };
 
+  const compressImage = (dataUrl: string, maxWidth = 800, maxHeight = 800): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+          const result = canvas.toDataURL("image/jpeg", 0.7);
+          console.log("Compressed image size:", result.length);
+          resolve(result);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = () => reject(new Error("Failed to load image for compression"));
+      img.src = dataUrl;
+    });
+  };
+
   const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewTemplateThumbnail(reader.result as string);
+      reader.onloadend = async () => {
+        try {
+          setSaveStatus("កំពុងបង្ហាប់រូបភាព... (Compressing image...)");
+          const compressed = await compressImage(reader.result as string);
+          setNewTemplateThumbnail(compressed);
+          setSaveStatus(null);
+        } catch (err) {
+          console.error("Compression error:", err);
+          alert("បរាជ័យក្នុងការបង្ហាប់រូបភាព (Failed to compress image)");
+          setSaveStatus(null);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -227,8 +274,17 @@ export default function App() {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewTemplateReferenceImage(reader.result as string);
+      reader.onloadend = async () => {
+        try {
+          setSaveStatus("កំពុងបង្ហាប់រូបភាព... (Compressing image...)");
+          const compressed = await compressImage(reader.result as string);
+          setNewTemplateReferenceImage(compressed);
+          setSaveStatus(null);
+        } catch (err) {
+          console.error("Compression error:", err);
+          alert("បរាជ័យក្នុងការបង្ហាប់រូបភាព (Failed to compress image)");
+          setSaveStatus(null);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -236,6 +292,12 @@ export default function App() {
 
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   
+  useEffect(() => {
+    if (currentUser) {
+      console.log("Current user:", currentUser.email, "UID:", currentUser.uid);
+    }
+  }, [currentUser]);
+
   const saveTemplate = async () => {
     if (!newTemplateName || !newTemplatePrompt) {
       alert("សូមបញ្ចូលឈ្មោះ និង Prompt (Please enter name and prompt)");
@@ -274,6 +336,7 @@ export default function App() {
     
     setSaveStatus("កំពុងរក្សាទុកទៅ Database... (Saving to database...)");
     try {
+      console.log("Saving template doc ID:", id);
       await setDoc(doc(db, "templates", id), templateData, { merge: true });
       
       setSaveStatus("ជោគជ័យ! (Success!)");
@@ -288,7 +351,7 @@ export default function App() {
     } catch (e: any) {
       console.error("Save template error:", e);
       setSaveStatus(`បរាជ័យ (Failed): ${e.message || "Unknown error"}`);
-      alert(`ការរក្សាទុកបានបរាជ័យ (Saving failed): ${e.message || "Unknown error"}`);
+      handleFirestoreError(e, OperationType.WRITE, `templates/${id}`);
     } finally {
       setIsSavingTemplate(false);
     }
@@ -296,11 +359,35 @@ export default function App() {
 
   const deleteTemplate = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("តើអ្នកប្រាកដថាចង់លុបគម្រូនេះមែនទេ?")) return;
+    console.log("Attempting to delete template:", id);
     
+    // Use custom state for confirmation instead of window.confirm
+    if (deletingTemplateId === id) {
+      setDeletingTemplateId(null); // Cancel
+      return;
+    }
+
+    setDeletingTemplateId(id);
+  };
+
+  const confirmDeleteTemplate = async (id: string) => {
+    console.log("Confirming deletion for template ID:", id);
+    if (!currentUser) {
+      console.error("No user signed in during deletion attempt");
+      setSaveStatus("កំហុស៖ មិនមានអ្នកប្រើប្រាស់បានចូល (Error: No user signed in)");
+      return;
+    }
+    console.log("User UID:", currentUser.uid);
+    setSaveStatus("កំពុងលុប... (Deleting...)");
     try {
       await deleteDoc(doc(db, "templates", id));
-    } catch (e) {
+      console.log("Deletion successful for ID:", id);
+      setSaveStatus("លុបបានជោគជ័យ! (Deleted successfully!)");
+      setTimeout(() => setSaveStatus(null), 3000);
+      setDeletingTemplateId(null);
+    } catch (e: any) {
+      console.error("Delete template firestore error:", e);
+      setSaveStatus(`បរាជ័យ (Failed): ${e.message || "Unknown error"}`);
       handleFirestoreError(e, OperationType.DELETE, `templates/${id}`);
     }
   };
@@ -1122,13 +1209,30 @@ export default function App() {
                             <Pencil size={12} />
                             Edit
                           </button>
-                          <button 
-                            onClick={(e) => deleteTemplate(template.id, e)}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-all"
-                          >
-                            <Trash2 size={12} />
-                            Delete
-                          </button>
+                          {deletingTemplateId === template.id ? (
+                            <div className="flex gap-1 animate-pulse">
+                              <button 
+                                onClick={() => confirmDeleteTemplate(template.id)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg text-[10px] font-bold hover:bg-red-700 transition-all shadow-sm"
+                              >
+                                Confirm Delete
+                              </button>
+                              <button 
+                                onClick={() => setDeletingTemplateId(null)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-bold hover:bg-gray-200 transition-all"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={(e) => deleteTemplate(template.id, e)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold hover:bg-red-100 transition-all"
+                            >
+                              <Trash2 size={12} />
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

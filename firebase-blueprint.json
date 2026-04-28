@@ -10,10 +10,11 @@
         "prompt": { "type": "string" },
         "thumbnail": { "type": "string", "description": "Base64 encoded thumbnail image" },
         "reference_image": { "type": "string", "description": "Base64 encoded reference image" },
-        "createdAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "integer" },
+        "updatedAt": { "type": "integer" },
         "createdBy": { "type": "string" }
       },
-      "required": ["name", "prompt", "createdAt", "createdBy"]
+      "required": ["name", "prompt", "createdAt", "createdBy", "updatedAt"]
     },
     "HistoryItem": {
       "title": "HistoryItem",
