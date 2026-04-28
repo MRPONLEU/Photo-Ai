@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "Template": {
+      "title": "Template",
+      "description": "Image generation template with prompt and thumbnail",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "prompt": { "type": "string" },
+        "thumbnail": { "type": "string", "description": "Base64 encoded thumbnail image" },
+        "reference_image": { "type": "string", "description": "Base64 encoded reference image" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["name", "prompt", "createdAt", "createdBy"]
+    },
+    "HistoryItem": {
+      "title": "HistoryItem",
+      "description": "A record of a generated image",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string" },
+        "prompt": { "type": "string" },
+        "timestamp": { "type": "integer" },
+        "userId": { "type": "string" }
+      },
+      "required": ["url", "prompt", "timestamp", "userId"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Global application setting",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["key", "value"]
+    }
+  },
+  "firestore": {
+    "templates": {
+      "schema": "Template",
+      "description": "Collection of image generation templates"
+    },
+    "history": {
+      "schema": "HistoryItem",
+      "description": "Collection of generated image history"
+    },
+    "settings": {
+      "schema": "Setting",
+      "description": "Collection of global application settings"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "henrythonny@gmail.com" && request.auth.token.email_verified == true
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Templates
+    match /templates/{templateId} {
+      allow read: if true; // Publicly readable
+      allow create, update, delete: if isSignedIn(); // Allow signed in users for now, or restrict to admin
+      
+      function isValidTemplate(data) {
+        return data.name is string && data.name.size() > 0 &&
+               data.prompt is string && data.prompt.size() > 0 &&
+               (data.thumbnail == null || (data.thumbnail is string && data.thumbnail.size() < 1048576)) &&
+               (data.reference_image == null || (data.reference_image is string && data.reference_image.size() < 1048576));
+      }
+    }
+
+    // History
+    match /history/{historyId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      
+      function isValidHistoryItem(data) {
+        return data.url is string && 
+               data.prompt is string && 
+               data.timestamp is int;
+      }
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isSignedIn(); // Restrict to admin in production
+    }
+    
+    // Admin list (readonly for security, managed via console or setup)
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+  }
+}
