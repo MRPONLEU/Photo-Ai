@@ -17,8 +17,7 @@ service cloud.firestore {
     
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == "henrythonny@gmail.com" && 
-        request.auth.token.email_verified == true
+        request.auth.token.email.lower() == "henrythonny@gmail.com".lower()
       );
     }
 
@@ -55,6 +54,11 @@ service cloud.firestore {
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isSignedIn(); // Restrict to admin in production
+    }
+
+    // Profiles
+    match /profiles/{userId} {
+      allow read, write: if isOwner(userId);
     }
     
     // Admin list (readonly for security, managed via console or setup)

@@ -37,6 +37,17 @@
         "value": { "type": "string" }
       },
       "required": ["key", "value"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User's CV information and preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "cvData": { "type": "object" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["userId", "cvData", "updatedAt"]
     }
   },
   "firestore": {
@@ -51,6 +62,10 @@
     "settings": {
       "schema": "Setting",
       "description": "Collection of global application settings"
+    },
+    "profiles": {
+      "schema": "UserProfile",
+      "description": "Collection of user's CV data and profiles"
     }
   }
 }

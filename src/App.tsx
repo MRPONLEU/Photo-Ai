@@ -62,6 +62,7 @@ interface UserTemplate {
   thumbnail: string | null;
   reference_image: string | null;
   createdAt?: any;
+  updatedAt?: any;
   createdBy?: string;
 }
 
@@ -79,6 +80,7 @@ function SectionHeader({ icon: Icon, title, subtitle, color = "indigo" }: { icon
     </div>
   );
 }
+
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"user" | "admin" | "map-qr">("user");
@@ -145,6 +147,7 @@ export default function App() {
   const [clarityLevel, setClarityLevel] = useState<"standard" | "ultra">("ultra");
   const [showCustomPromptArea, setShowCustomPromptArea] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [errorModal, setErrorModal] = useState<{show: boolean, type: string} | null>(null);
   
@@ -156,9 +159,15 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser) {
-      const unsubTemplates = onSnapshot(query(collection(db, "templates"), orderBy("createdAt", "desc")), (snapshot) => {
+      const unsubTemplates = onSnapshot(collection(db, "templates"), (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserTemplate));
-        setUserTemplates(data);
+        // Sort on client to handle missing updatedAt/createdAt fields gracefully
+        const sortedData = data.sort((a, b) => {
+          const timeA = a.updatedAt || a.createdAt || 0;
+          const timeB = b.updatedAt || b.createdAt || 0;
+          return timeB - timeA;
+        });
+        setUserTemplates(sortedData);
       }, (error) => handleFirestoreError(error, OperationType.GET, "templates"));
 
       const unsubHistory = onSnapshot(query(collection(db, "history"), where("userId", "==", currentUser.uid), orderBy("timestamp", "desc"), limit(20)), (snapshot) => {
@@ -225,29 +234,63 @@ export default function App() {
     }
   };
 
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  
   const saveTemplate = async () => {
-    if (!newTemplateName || !newTemplatePrompt || !currentUser) return;
+    if (!newTemplateName || !newTemplatePrompt) {
+      alert("សូមបញ្ចូលឈ្មោះ និង Prompt (Please enter name and prompt)");
+      return;
+    }
     
+    if (!currentUser) {
+      alert("សូមចូលប្រើប្រាស់ដើម្បីរក្សាទុកគម្រូ (Please sign in to save template)");
+      return;
+    }
+
+    setIsSavingTemplate(true);
+    setSaveStatus("កំពុងពិនិត្យទំហំរូបភាព... (Checking image size...)");
+    
+    // Check total document size (Firestore limit is 1MB)
+    const totalImageSize = (newTemplateThumbnail?.length || 0) + (newTemplateReferenceImage?.length || 0);
+    if (totalImageSize > 850000) { 
+      alert("ទំហំរូបភាពសរុបធំពេក (Total image size too large). Please select smaller images.");
+      setIsSavingTemplate(false);
+      setSaveStatus(null);
+      return;
+    }
+
+    setSaveStatus("កំពុងរៀបចំទិន្នន័យ... (Preparing data...)");
     const id = editingTemplateId || Date.now().toString();
+    const wasEditing = !!editingTemplateId;
+    const timestamp = Date.now();
     const templateData = {
       name: newTemplateName,
       prompt: newTemplatePrompt,
       thumbnail: newTemplateThumbnail,
       reference_image: newTemplateReferenceImage,
-      updatedAt: serverTimestamp(),
-      ...(editingTemplateId ? {} : { createdAt: serverTimestamp(), createdBy: currentUser.uid })
+      updatedAt: timestamp,
+      ...(editingTemplateId ? {} : { createdAt: timestamp, createdBy: currentUser.uid })
     };
     
+    setSaveStatus("កំពុងរក្សាទុកទៅ Database... (Saving to database...)");
     try {
       await setDoc(doc(db, "templates", id), templateData, { merge: true });
       
+      setSaveStatus("ជោគជ័យ! (Success!)");
       setNewTemplateName("");
       setNewTemplatePrompt("");
       setNewTemplateThumbnail(null);
       setNewTemplateReferenceImage(null);
       setEditingTemplateId(null);
-    } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, `templates/${id}`);
+      
+      alert(wasEditing ? "កែប្រែគម្រូជោគជ័យ! (Template updated!)" : "រក្សាទុកគម្រូថ្មីជោគជ័យ! (New template saved!)");
+      setTimeout(() => setSaveStatus(null), 2000);
+    } catch (e: any) {
+      console.error("Save template error:", e);
+      setSaveStatus(`បរាជ័យ (Failed): ${e.message || "Unknown error"}`);
+      alert(`ការរក្សាទុកបានបរាជ័យ (Saving failed): ${e.message || "Unknown error"}`);
+    } finally {
+      setIsSavingTemplate(false);
     }
   };
 
@@ -356,7 +399,9 @@ export default function App() {
         }
       }
         
-      const resultUrl = await generateImage(finalPrompt, "3:4", inputImages);
+      const finalPromptToUse = `${finalPrompt}, highly detailed, photorealistic, 8k resolution, professional cinematic lighting, sharp focus, masterpiece quality.`;
+
+      const resultUrl = await generateImage(finalPromptToUse, "3:4", inputImages);
       setGeneratedResult(resultUrl);
       
       if (currentUser) {
@@ -569,7 +614,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {activeTab === "user" ? (
+      {activeTab === "user" && (
         <motion.div 
           key="user-tab"
           initial={{ opacity: 0, y: 20 }}
@@ -829,7 +874,7 @@ export default function App() {
                   <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <button
                     onClick={handleGenerate}
                     disabled={isGenerating || !uploadedImage}
@@ -890,8 +935,10 @@ export default function App() {
           </div>
         </div>
         </motion.div>
-      ) : activeTab === "admin" ? (
-        /* Admin Panel */
+      )}
+
+
+      {activeTab === "admin" && (
         <motion.div 
           key="admin-tab"
           initial={{ opacity: 0, scale: 0.98 }}
@@ -940,6 +987,12 @@ export default function App() {
                   <Plus size={20} />
                   <h3 className="font-bold text-lg">{editingTemplateId ? "កែសម្រួលគម្រូ" : "បន្ថែមគម្រូថ្មី"}</h3>
                 </div>
+                {currentUser && (
+                  <div className="mx-6 mt-1 px-3 py-2 bg-indigo-50 text-indigo-700 text-[10px] rounded-xl font-bold flex items-center gap-2 border border-indigo-100">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+                    Status: Signed in as {currentUser.email}
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -1015,12 +1068,21 @@ export default function App() {
                     )}
                     <button 
                       onClick={saveTemplate}
-                      disabled={!newTemplateName || !newTemplatePrompt}
-                      className="flex-[2] py-3 bg-[#6366F1] text-white font-bold rounded-2xl disabled:opacity-50 hover:bg-indigo-600 shadow-lg shadow-indigo-500/20 transition-all"
+                      disabled={!newTemplateName || !newTemplatePrompt || isSavingTemplate}
+                      className="flex-[2] py-3 bg-[#6366F1] text-white font-bold rounded-2xl disabled:opacity-50 hover:bg-indigo-600 shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
                     >
+                      {isSavingTemplate && <Loader2 size={16} className="animate-spin" />}
                       {editingTemplateId ? "Update Template" : "Save Template"}
                     </button>
                   </div>
+                  {saveStatus && (
+                    <div className={cn(
+                      "mt-2 text-[10px] font-bold text-center px-4 py-2 rounded-xl transition-all animate-pulse",
+                      saveStatus.includes("បរាជ័យ") ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600"
+                    )}>
+                      {saveStatus}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1081,8 +1143,9 @@ export default function App() {
             </div>
           </div>
         </motion.div>
-      ) : (
-        /* Map QR Code Panel */
+      )}
+
+      {activeTab === "map-qr" && (
         <motion.div 
           key="map-qr-tab"
           initial={{ opacity: 0, y: 20 }}
