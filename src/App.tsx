@@ -1162,7 +1162,7 @@ export default function App() {
                 <SectionHeader 
                   icon={History}
                   title="ប្រវត្តិរូបភាព (Recent History)"
-                  subtitle="Displaying your last 4 generated studio portraits."
+                  subtitle="Displaying your last 8 generated studio portraits."
                 />
 
                 <div className="p-8">
@@ -1200,8 +1200,16 @@ export default function App() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12 text-gray-400 italic bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                      មិនទាន់មានរូបភាពនៅឡើយទេ
+                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
+                      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300">
+                        <History size={32} />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-500 italic">មិនមានប្រវត្តិរូបភាពទេ (No history found)</p>
+                        <p className="text-[10px] text-gray-400 max-w-[200px] mx-auto leading-relaxed">
+                          {!currentUser ? "សូមចូលប្រើប្រាស់ (Login) ដើម្បីរក្សាទុកប្រវត្តិរូបភាព" : "សាកល្បងបង្កើតរូបភាពថ្មីដើម្បីមើលវានៅទីនេះ"}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1845,27 +1853,32 @@ export default function App() {
                 </div>
                 
                 <div className="space-y-4">
-                  <div className="bg-indigo-50 p-4 rounded-xl">
-                    <h4 className="text-sm font-bold text-indigo-900 mb-2">របៀបយក API Key ឥតគិតថ្លៃ៖</h4>
-                    <ol className="list-decimal pl-4 text-xs text-indigo-800 space-y-1">
-                      <li>ចូលទៅកាន់ <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-semibold">aistudio.google.com</a></li>
-                      <li>ចុច "Create API key"</li>
-                      <li>យកវាមកបញ្ចូលក្នុងប្រអប់ខាងក្រោម</li>
-                    </ol>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">Gemini API Key</label>
-                    <p className="text-xs text-gray-500">
-                      បញ្ចូល API Key លោកអ្នកដើម្បីប្រើឥតគិតថ្លៃ ១០០%។
-                    </p>
-                    <input 
-                      type="password"
-                      value={localApiKey}
-                      onChange={(e) => setLocalApiKey(e.target.value)}
-                      placeholder="AIzaSy..."
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:border-[#6366F1] focus:ring-4 focus:ring-[#6366F1]/5 transition-all"
-                    />
-                  </div>
+                      <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100">
+                        <h4 className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
+                          <Layout size={16} />
+                          របៀបយក API Key ឥតគិតថ្លៃ៖
+                        </h4>
+                        <ol className="list-decimal pl-5 text-xs text-indigo-800 space-y-2 leading-relaxed">
+                          <li>ចូលទៅកាន់ <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-bold hover:text-indigo-600 transition-colors">aistudio.google.com</a></li>
+                          <li>ចុចប៊ូតុង "Create API key"</li>
+                          <li>ចម្លង Key នោះមកបញ្ចូលក្នុងប្រអប់ខាងក្រោម</li>
+                        </ol>
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                          Gemini API Key
+                        </label>
+                        <p className="text-[11px] text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                          បញ្ចូល API Key លោកអ្នកដើម្បីប្រើប្រាស់ការបង្កើតរូបភាពដោយឥគិតថ្លៃ ១០០%។ បើគ្មាន Key ទេ លោកអ្នកមិនអាចបង្កើតរូបភាពបានឡើយ។
+                        </p>
+                        <input 
+                          type="password"
+                          value={localApiKey}
+                          onChange={(e) => setLocalApiKey(e.target.value)}
+                          placeholder="បញ្ចូល API Key នៅទីនេះ (ឧ៖ AIzaSy...)"
+                          className="w-full px-5 py-4 bg-white border border-gray-200 rounded-2xl text-sm outline-none focus:border-[#6366F1] focus:ring-4 focus:ring-[#6366F1]/5 transition-all shadow-sm"
+                        />
+                      </div>
                   
                   {(typeof window !== 'undefined' && 'aistudio' in window) && (
                     <div className="pt-2">
