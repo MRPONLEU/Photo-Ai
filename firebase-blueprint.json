@@ -36,7 +36,7 @@
         "id": { "type": "string" },
         "url": { "type": "string" },
         "prompt": { "type": "string" },
-        "timestamp": { "type": "integer" },
+        "timestamp": { "type": "string", "format": "date-time" },
         "userId": { "type": "string" }
       },
       "required": ["url", "prompt", "timestamp", "userId"]

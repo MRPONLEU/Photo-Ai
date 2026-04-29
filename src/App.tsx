@@ -274,9 +274,14 @@ export default function App() {
       const unsubHistory = onSnapshot(query(collection(db, "history"), where("userId", "==", currentUser.uid)), (snapshot) => {
         const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data({ serverTimestamps: 'estimate' }) } as GeneratedImage));
         const sortedData = data.sort((a, b) => {
-          const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
-          const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
-          return timeB - timeA;
+          const getTime = (ts: any) => {
+            if (!ts) return 0;
+            if (typeof ts === 'number') return ts;
+            if (ts.toMillis) return ts.toMillis();
+            if (ts.seconds) return ts.seconds * 1000;
+            return 0;
+          };
+          return getTime(b.timestamp) - getTime(a.timestamp);
         });
         setHistory(sortedData.slice(0, 20));
       }, (error) => handleFirestoreError(error, OperationType.GET, "history"));
@@ -634,8 +639,11 @@ export default function App() {
         };
         
         try {
+          console.log("Saving to history, size:", historyUrl.length);
           await setDoc(doc(db, "history", id), newImage);
+          console.log("History saved successfully");
         } catch (e) {
+          console.error("History save failed:", e);
           handleFirestoreError(e, OperationType.WRITE, `history/${id}`);
         }
       }
@@ -1162,7 +1170,7 @@ export default function App() {
 
                   {history.length > 0 ? (
                     <div className="grid grid-cols-2 gap-4">
-                      {history.slice(0, 4).map((img) => (
+                      {history.slice(0, 8).map((img) => (
                         <div key={img.id} className="relative aspect-[3/4] rounded-2xl overflow-hidden group border border-gray-100 shadow-sm">
                           <img src={img.url} className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
