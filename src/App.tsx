@@ -82,7 +82,7 @@ function SectionHeader({ icon: Icon, title, subtitle, color = "indigo" }: { icon
 }
 
 
-const compressImage = async (base64Str: string, maxBytes = 1000000): Promise<string> => {
+const compressImage = async (base64Str: string, maxBytes = 800000): Promise<string> => {
   if (base64Str.length < maxBytes) return base64Str;
   
   return new Promise((resolve) => {
@@ -94,8 +94,8 @@ const compressImage = async (base64Str: string, maxBytes = 1000000): Promise<str
       let width = img.width;
       let height = img.height;
       
-      const MAX_W = 1000;
-      const MAX_H = 1500;
+      const MAX_W = 500;
+      const MAX_H = 750;
       if (width > MAX_W || height > MAX_H) {
          const scale = Math.min(MAX_W/width, MAX_H/height);
          width = width * scale;
@@ -111,11 +111,11 @@ const compressImage = async (base64Str: string, maxBytes = 1000000): Promise<str
       }
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       
-      let quality = 0.9;
+      let quality = 0.8;
       let compressedStr = canvas.toDataURL("image/jpeg", quality);
       
-      while (compressedStr.length > maxBytes && quality > 0.4) {
-        quality -= 0.1;
+      while (compressedStr.length > maxBytes && quality > 0.1) {
+        quality -= 0.15;
         compressedStr = canvas.toDataURL("image/jpeg", quality);
       }
       
@@ -271,9 +271,14 @@ export default function App() {
         setUserTemplates(sortedData);
       }, (error) => handleFirestoreError(error, OperationType.GET, "templates"));
 
-      const unsubHistory = onSnapshot(query(collection(db, "history"), where("userId", "==", currentUser.uid), orderBy("timestamp", "desc"), limit(20)), (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GeneratedImage));
-        setHistory(data);
+      const unsubHistory = onSnapshot(query(collection(db, "history"), where("userId", "==", currentUser.uid)), (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data({ serverTimestamps: 'estimate' }) } as GeneratedImage));
+        const sortedData = data.sort((a, b) => {
+          const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
+          const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
+          return timeB - timeA;
+        });
+        setHistory(sortedData.slice(0, 20));
       }, (error) => handleFirestoreError(error, OperationType.GET, "history"));
 
       const unsubSettings = onSnapshot(doc(db, "settings", "global"), (doc) => {

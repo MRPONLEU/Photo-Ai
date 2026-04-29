@@ -60,7 +60,7 @@ service cloud.firestore {
                       isValidId(historyId) &&
                       incoming().url is string && 
                       incoming().prompt is string && 
-                      incoming().timestamp is int;
+                      incoming().timestamp is timestamp;
     }
 
     // Settings
