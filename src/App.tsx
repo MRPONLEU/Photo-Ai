@@ -82,6 +82,49 @@ function SectionHeader({ icon: Icon, title, subtitle, color = "indigo" }: { icon
 }
 
 
+const compressImage = async (base64Str: string, maxBytes = 1000000): Promise<string> => {
+  if (base64Str.length < maxBytes) return base64Str;
+  
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+      
+      const MAX_W = 1000;
+      const MAX_H = 1500;
+      if (width > MAX_W || height > MAX_H) {
+         const scale = Math.min(MAX_W/width, MAX_H/height);
+         width = width * scale;
+         height = height * scale;
+      }
+      
+      canvas.width = Math.floor(width);
+      canvas.height = Math.floor(height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(base64Str);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      let quality = 0.9;
+      let compressedStr = canvas.toDataURL("image/jpeg", quality);
+      
+      while (compressedStr.length > maxBytes && quality > 0.4) {
+        quality -= 0.1;
+        compressedStr = canvas.toDataURL("image/jpeg", quality);
+      }
+      
+      resolve(compressedStr);
+    };
+    img.onerror = () => resolve(base64Str);
+  });
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<"user" | "admin" | "map-qr">("user");
   const [needsApiKey, setNeedsApiKey] = useState(false);
@@ -570,8 +613,16 @@ export default function App() {
       
       if (currentUser) {
         const id = Date.now().toString();
+        
+        let historyUrl = resultUrl;
+        try {
+          historyUrl = await compressImage(resultUrl, 800000);
+        } catch (err) {
+          console.warn("Failed to compress image for history", err);
+        }
+        
         const newImage = {
-          url: resultUrl,
+          url: historyUrl,
           prompt: finalPrompt,
           timestamp: serverTimestamp(),
           userId: currentUser.uid
