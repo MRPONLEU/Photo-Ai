@@ -148,6 +148,10 @@ export default function App() {
   const [showCustomPromptArea, setShowCustomPromptArea] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+
+  const isAdmin = () => {
+    return currentUser?.email?.toLowerCase() === "henrythonny@gmail.com";
+  };
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [errorModal, setErrorModal] = useState<{show: boolean, type: string} | null>(null);
@@ -589,19 +593,21 @@ export default function App() {
                       Map QR Code
                     </button>
 
-                    <button
-                      onClick={() => {
-                        setActiveTab("admin");
-                        setIsMenuOpen(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm mt-1",
-                        activeTab === "admin" ? "bg-[#6366F1] text-white shadow-lg shadow-indigo-500/20" : "text-gray-500 hover:bg-gray-50"
-                      )}
-                    >
-                      <Settings size={18} />
-                      Setting
-                    </button>
+                    {isAdmin() && (
+                      <button
+                        onClick={() => {
+                          setActiveTab("admin");
+                          setIsMenuOpen(false);
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm mt-1",
+                          activeTab === "admin" ? "bg-[#6366F1] text-white shadow-lg shadow-indigo-500/20" : "text-gray-500 hover:bg-gray-50"
+                        )}
+                      >
+                        <Settings size={18} />
+                        Setting
+                      </button>
+                    )}
 
                     <div className="my-2 border-t border-gray-50 pt-2">
                       {loginError && (
@@ -1025,7 +1031,7 @@ export default function App() {
       )}
 
 
-      {activeTab === "admin" && (
+      {activeTab === "admin" && isAdmin() && (
         <motion.div 
           key="admin-tab"
           initial={{ opacity: 0, scale: 0.98 }}
