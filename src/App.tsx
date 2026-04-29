@@ -844,11 +844,11 @@ export default function App() {
               </div>
               <div className="p-8 space-y-6">
                 <p className="text-gray-600 text-sm leading-relaxed text-center">
-                  អ្នកបានប្រើប្រាស់អស់កូតាឥតគិតថ្លៃសម្រាប់ពេលនេះហើយ។ កូតានឹងកំណត់ឡើងវិញក្នុងពេលឆាប់ៗខាងមុខ។
+                  អ្នកបានប្រើប្រាស់អស់កូតាឥតគិតថ្លៃសម្រាប់ពេលនេះហើយ។ សូមជ្រើសរើស ឬបញ្ចូល API Key ដើម្បីបន្តប្រើប្រាស់។
                 </p>
                 {/* AI Studio specific API key selection flow */}
-                {(typeof window !== 'undefined' && 'aistudio' in window) && (
-                  <div className="flex justify-center mt-2 mb-4">
+                <div className="space-y-4">
+                  {(typeof window !== 'undefined' && 'aistudio' in window) && (
                     <button 
                       onClick={async () => {
                         try {
@@ -858,12 +858,33 @@ export default function App() {
                           console.error("Failed to open select key dialog", err);
                         }
                       }}
-                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors"
+                      className="w-full py-3 bg-[#6366F1] text-white rounded-xl font-bold hover:bg-indigo-600 transition-all text-sm"
                     >
-                      ជ្រើសរើស API Key ពី Google Cloud (Select Key)
+                      ជ្រើសរើស API Key ស្វ័យប្រវត្តិ
                     </button>
+                  )}
+                  
+                  <div className="space-y-2 text-left">
+                    <label className="text-sm font-bold text-gray-700">បញ្ចូល API Key ឥតគិតថ្លៃ</label>
+                    <input 
+                      type="password"
+                      value={localApiKey}
+                      onChange={(e) => {
+                        setLocalApiKey(e.target.value);
+                        if (e.target.value.trim()) {
+                          localStorage.setItem('gemini_api_key', e.target.value.trim());
+                        } else {
+                          localStorage.removeItem('gemini_api_key');
+                        }
+                      }}
+                      placeholder="AIzaSy..."
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all font-mono"
+                    />
+                    <div className="text-[10px] text-indigo-600 pt-1">
+                       <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-semibold hover:text-indigo-800">យក API Key ឥតគិតថ្លៃទីនេះ</a>
+                    </div>
                   </div>
-                )}
+                </div>
                 {errorModal?.message && (
                   <div className="p-3 bg-red-50 rounded-xl border border-red-100 text-red-600 text-[10px] break-all">
                     Detail: {errorModal.message}
@@ -875,9 +896,9 @@ export default function App() {
                       <Settings size={16} />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs font-bold text-gray-800">របៀបដោះស្រាយ (How to fix)</p>
+                      <p className="text-xs font-bold text-gray-800">របៀបទទួលបានកូតាធំ (How to get larger quota)</p>
                       <p className="text-[10px] text-gray-500 leading-relaxed">
-                        អ្នកអាចបញ្ចូល API Key ផ្ទាល់ខ្លួនរបស់អ្នកនៅក្នុង Settings នៃ AI Studio ដើម្បីទទួលបានកូតាច្រើនជាងនេះ។
+                        ចូលទៅកន្លែង Settings នៃ AI Studio ដើម្បីជ្រើសរើស Google Cloud API Key ។
                       </p>
                     </div>
                   </div>

@@ -6,6 +6,8 @@ export const generateImage = async (
   images: string[] = [] // array of base64 strings
 ) => {
   const customApiKey = localStorage.getItem('gemini_api_key');
+  
+  // @ts-ignore
   const apiKey = customApiKey || process.env.API_KEY || import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
 
   if (!apiKey) {
