@@ -63,7 +63,7 @@ export default async function handler(req: any, res: any) {
   } catch (error: any) {
     console.error("Vercel Image generation error:", error);
     if (error.message?.includes("429") || error.message?.toLowerCase().includes("quota")) {
-      return res.status(429).json({ error: "QUOTA_EXCEEDED" });
+      return res.status(429).json({ error: "QUOTA_EXCEEDED", detail: error.message });
     }
     res.status(500).json({ error: error.message || "Internal server error" });
   }

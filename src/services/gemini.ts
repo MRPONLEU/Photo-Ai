@@ -15,7 +15,7 @@ export const generateImage = async (
   if (!response.ok) {
     const errorData = await response.json().catch(() => null);
     if (errorData?.error === "QUOTA_EXCEEDED" || response.status === 429) {
-      throw new Error("QUOTA_EXCEEDED");
+      throw new Error(`QUOTA_EXCEEDED: ${errorData?.detail || errorData?.error || "Unknown quota error"}`);
     }
     throw new Error(errorData?.error || "Failed to generate image");
   }

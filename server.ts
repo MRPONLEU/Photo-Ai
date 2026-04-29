@@ -65,7 +65,7 @@ async function startServer() {
     } catch (error: any) {
       console.error("Image generation error:", error);
       if (error.message?.includes("429") || error.message?.toLowerCase().includes("quota")) {
-        return res.status(429).json({ error: "QUOTA_EXCEEDED" });
+        return res.status(429).json({ error: "QUOTA_EXCEEDED", detail: error.message });
       }
       res.status(500).json({ error: error.message || "Internal server error" });
     }

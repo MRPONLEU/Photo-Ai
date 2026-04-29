@@ -183,7 +183,7 @@ export default function App() {
   };
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [errorModal, setErrorModal] = useState<{show: boolean, type: string} | null>(null);
+  const [errorModal, setErrorModal] = useState<{show: boolean, type: string, message?: string} | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const templateThumbRef = useRef<HTMLInputElement>(null);
@@ -561,10 +561,10 @@ export default function App() {
       }
     } catch (error: any) {
       console.error("Generation failed", error);
-      if (error.message === "QUOTA_EXCEEDED") {
-        setErrorModal({ show: true, type: "quota" });
+      if (error.message?.includes("QUOTA_EXCEEDED") || error.message?.includes("429")) {
+        setErrorModal({ show: true, type: "quota", message: error.message });
       } else {
-        alert("ការបង្កើតរូបភាពបានបរាជ័យ។ សូមព្យាយាមម្តងទៀត។");
+        alert("ការបង្កើតរូបភាពបានបរាជ័យ៖ " + error.message);
       }
     } finally {
       setIsGenerating(false);
@@ -742,6 +742,11 @@ export default function App() {
                 <p className="text-gray-600 text-sm leading-relaxed text-center">
                   អ្នកបានប្រើប្រាស់អស់កូតាឥតគិតថ្លៃសម្រាប់ពេលនេះហើយ។ កូតានឹងកំណត់ឡើងវិញក្នុងពេលឆាប់ៗខាងមុខ។
                 </p>
+                {errorModal?.message && (
+                  <div className="p-3 bg-red-50 rounded-xl border border-red-100 text-red-600 text-[10px] break-all">
+                    Detail: {errorModal.message}
+                  </div>
+                )}
                 <div className="space-y-4">
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex gap-4">
                     <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
