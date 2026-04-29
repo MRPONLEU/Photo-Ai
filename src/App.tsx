@@ -642,8 +642,17 @@ export default function App() {
           console.log("Saving to history, size:", historyUrl.length);
           await setDoc(doc(db, "history", id), newImage);
           console.log("History saved successfully");
-        } catch (e) {
+        } catch (e: any) {
           console.error("History save failed:", e);
+          // If it still fails due to size, try extreme compression
+          if (e.message?.includes("too large")) {
+             try {
+                const tinyUrl = await compressImage(resultUrl, 300000);
+                await setDoc(doc(db, "history", id), { ...newImage, url: tinyUrl });
+             } catch (innerErr) {
+                console.error("Extreme compression also failed", innerErr);
+             }
+          }
           handleFirestoreError(e, OperationType.WRITE, `history/${id}`);
         }
       }
