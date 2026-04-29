@@ -14,12 +14,11 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const { prompt, aspectRatio = "1:1", images = [], apiKey: customApiKey } = req.body;
+    const apiKey = customApiKey || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "API Key (GEMINI_API_KEY) is not set on the Vercel server" });
+      return res.status(500).json({ error: "API Key is not provided and GEMINI_API_KEY is not set on the server" });
     }
-
-    const { prompt, aspectRatio = "1:1", images = [] } = req.body;
     const ai = new GoogleGenAI({ apiKey });
     
     const parts: any[] = [{ text: prompt }];

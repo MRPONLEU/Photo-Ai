@@ -174,6 +174,8 @@ export default function App() {
   const [clarityLevel, setClarityLevel] = useState<"standard" | "ultra">("ultra");
   const [showCustomPromptArea, setShowCustomPromptArea] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [localApiKey, setLocalApiKey] = useState(localStorage.getItem('gemini_api_key') || "");
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   const isAdmin = () => {
@@ -657,6 +659,17 @@ export default function App() {
                     )}
 
                     <div className="my-2 border-t border-gray-50 pt-2">
+                      <button
+                        onClick={() => {
+                          setShowSettingsModal(true);
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all text-sm text-gray-500 hover:bg-gray-50"
+                      >
+                        <Settings size={18} />
+                        Settings API Key
+                      </button>
+                      
                       {loginError && (
                         <div className="px-4 py-2 mb-2 bg-red-50 text-red-600 text-[10px] rounded-xl flex items-center gap-2">
                           <AlertCircle size={12} />
@@ -1588,6 +1601,65 @@ export default function App() {
           </div>
         </motion.div>
       )}
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettingsModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl relative"
+            >
+              <div className="p-8 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Settings className="text-[#6366F1]" />
+                    Settings
+                  </h3>
+                  <button onClick={() => setShowSettingsModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-700">Custom Gemini API Key</label>
+                    <p className="text-xs text-gray-500">
+                      If the default quota is exceeded or you want to use your own Google Gemini API key.
+                    </p>
+                    <input 
+                      type="password"
+                      value={localApiKey}
+                      onChange={(e) => setLocalApiKey(e.target.value)}
+                      placeholder="AIzaSy..."
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:border-[#6366F1] focus:ring-4 focus:ring-[#6366F1]/5 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    onClick={() => {
+                      if (localApiKey.trim()) {
+                        localStorage.setItem('gemini_api_key', localApiKey.trim());
+                      } else {
+                        localStorage.removeItem('gemini_api_key');
+                      }
+                      setShowSettingsModal(false);
+                      // Force page reload might be needed to apply the change fully immediately, or we can just rely on the next fetch call
+                    }}
+                    className="flex-1 py-4 bg-[#6366F1] text-white rounded-2xl font-bold hover:bg-indigo-600 shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

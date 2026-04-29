@@ -3,12 +3,13 @@ export const generateImage = async (
   aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "1:1",
   images: string[] = [] // array of base64 strings
 ) => {
+  const customApiKey = localStorage.getItem('gemini_api_key');
   const response = await fetch("/api/generate-image", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ prompt, aspectRatio, images }),
+    body: JSON.stringify({ prompt, aspectRatio, images, apiKey: customApiKey }),
   });
 
   if (!response.ok) {
