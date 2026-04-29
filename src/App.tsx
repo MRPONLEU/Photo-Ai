@@ -94,6 +94,8 @@ export default function App() {
   const [generatedResult, setGeneratedResult] = useState<string | null>(null);
   const [history, setHistory] = useState<GeneratedImage[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<"admin" | "user">("user");
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   
   // Template Management State
   const [userTemplates, setUserTemplates] = useState<UserTemplate[]>([]);
@@ -108,10 +110,35 @@ export default function App() {
   const [qrLogoDataUrl, setQrLogoDataUrl] = useState<string>("");
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setCurrentUser(user);
+        if (!user.isAnonymous && user.email) {
+          const userRef = doc(db, "users", user.uid);
+          try {
+             const userSnap = await getDoc(userRef);
+             if (!userSnap.exists()) {
+               const role = user.email.toLowerCase() === "henrythonny@gmail.com".toLowerCase() ? "admin" : "user";
+               await setDoc(userRef, {
+                 uid: user.uid,
+                 email: user.email,
+                 role: role,
+                 createdAt: Date.now()
+               });
+               setUserRole(role);
+             } else {
+               setUserRole(userSnap.data().role || "user");
+             }
+          } catch (e) {
+             console.error("Error creating/fetching user profile", e);
+             if (user.email.toLowerCase() === "henrythonny@gmail.com".toLowerCase()) {
+               setUserRole("admin");
+             }
+          }
+        }
       } else {
+        setUserRole("user");
+        setCurrentUser(null);
         // Automatically sign in anonymously if not logged in
         loginAnonymously().catch(console.error);
       }
@@ -150,7 +177,7 @@ export default function App() {
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   const isAdmin = () => {
-    return currentUser?.email?.toLowerCase() === "henrythonny@gmail.com";
+    return userRole === "admin" || (currentUser?.email?.toLowerCase() === "henrythonny@gmail.com");
   };
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -187,16 +214,25 @@ export default function App() {
         }
       }, (error) => handleFirestoreError(error, OperationType.GET, "settings/global"));
 
+      let unsubUsers: any = null;
+      if (isAdmin()) {
+        unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
+          setAllUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }, (error) => handleFirestoreError(error, OperationType.GET, "users"));
+      }
+
       return () => {
         unsubTemplates();
         unsubHistory();
         unsubSettings();
+        if (unsubUsers) unsubUsers();
       };
     } else {
       setUserTemplates([]);
       setHistory([]);
+      setAllUsers([]);
     }
-  }, [currentUser]);
+  }, [currentUser, userRole]);
 
   const updateSetting = async (key: string, value: any) => {
     try {
@@ -393,6 +429,17 @@ export default function App() {
       console.error("Delete template firestore error:", e);
       setSaveStatus(`បរាជ័យ (Failed): ${e.message || "Unknown error"}`);
       handleFirestoreError(e, OperationType.DELETE, `templates/${id}`);
+    }
+  };
+
+  const updateUserRole = async (userId: string, newRole: "admin" | "user") => {
+    try {
+      await setDoc(doc(db, "users", userId), { role: newRole }, { merge: true });
+      alert(`User role updated to ${newRole}`);
+    } catch (e: any) {
+      console.error("Error updating user role:", e);
+      alert("Failed to update user role");
+      handleFirestoreError(e, OperationType.WRITE, `users/${userId}`);
     }
   };
 
@@ -1251,6 +1298,78 @@ export default function App() {
                 </div>
               </div>
             </div>
+            
+            {/* User Management */}
+            <div className="lg:col-span-3 space-y-6 mt-4">
+              <div className="bg-white rounded-3xl shadow-xl p-6 border border-gray-100">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="p-2 bg-indigo-50 rounded-xl text-[#6366F1]">
+                    <UserIcon size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-800 tracking-tight">គ្រប់គ្រងអ្នកប្រើប្រាស់ (User Management)</h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5 tracking-widest">រៀបចំសិទ្ធិអ្នកប្រើប្រាស់</p>
+                  </div>
+                </div>
+                
+                <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
+                  <table className="w-full text-sm text-left border-collapse">
+                    <thead className="bg-[#6366F1] text-white uppercase text-[10px] font-bold tracking-widest">
+                      <tr>
+                        <th className="px-6 py-4 rounded-tl-xl">Email</th>
+                        <th className="px-6 py-4">UID (ID)</th>
+                        <th className="px-6 py-4 text-center">Role</th>
+                        <th className="px-6 py-4 rounded-tr-xl text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {allUsers.map(user => (
+                        <tr key={user.uid} className="hover:bg-gray-50/50 transition-colors group">
+                          <td className="px-6 py-4 font-semibold text-gray-800">{user.email || "No Email"}</td>
+                          <td className="px-6 py-4 text-xs text-gray-400 font-mono tracking-tighter">{user.uid}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={cn(
+                              "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm", 
+                              user.role === "admin" ? "bg-[#6366F1] text-white" : "bg-gray-100 text-gray-600"
+                            )}>
+                              {user.role || 'user'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex justify-center gap-2 opacity-100 lg:opacity-50 lg:group-hover:opacity-100 transition-opacity">
+                              {user.role === "admin" ? (
+                                <button
+                                  disabled={user.email?.toLowerCase() === "henrythonny@gmail.com".toLowerCase()}
+                                  onClick={() => updateUserRole(user.uid, "user")}
+                                  className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-bold hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                >
+                                  Make User
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => updateUserRole(user.uid, "admin")}
+                                  className="px-4 py-2 bg-[#6366F1] text-white rounded-xl text-[10px] font-bold hover:bg-indigo-600 shadow-md shadow-indigo-500/20 transition-all"
+                                >
+                                  Make Admin
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {allUsers.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic">
+                            កំពុងទាញយកទិន្នន័យអ្នកប្រើប្រាស់... (Loading users...)
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
           </div>
         </motion.div>
       )}

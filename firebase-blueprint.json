@@ -1,5 +1,17 @@
 {
   "entities": {
+    "User": {
+      "title": "User",
+      "description": "User role and info",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["uid", "email", "role"]
+    },
     "Template": {
       "title": "Template",
       "description": "Image generation template with prompt and thumbnail",
@@ -52,6 +64,10 @@
     }
   },
   "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Collection of users and their roles"
+    },
     "templates": {
       "schema": "Template",
       "description": "Collection of image generation templates"

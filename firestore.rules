@@ -15,9 +15,16 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
+    function isBootstrapAdmin() {
+      return request.auth.token.email.lower() == "henrythonny@gmail.com".lower();
+    }
+
     function isAdmin() {
-      return isSignedIn() && 
-        request.auth.token.email.lower() == "henrythonny@gmail.com".lower();
+      return isSignedIn() && (
+        isBootstrapAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
 
     function isValidId(id) {
@@ -26,6 +33,17 @@ service cloud.firestore {
 
     function incoming() {
       return request.resource.data;
+    }
+
+    // Users
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && 
+                      incoming().uid == userId &&
+                      incoming().role == (isBootstrapAdmin() ? "admin" : "user");
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // Templates
