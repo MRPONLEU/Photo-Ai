@@ -84,6 +84,30 @@ function SectionHeader({ icon: Icon, title, subtitle, color = "indigo" }: { icon
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"user" | "admin" | "map-qr">("user");
+  const [needsApiKey, setNeedsApiKey] = useState(false);
+  const [checkingApiKey, setCheckingApiKey] = useState(true);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      if (localStorage.getItem('skip_api_key_prompt')) {
+        setCheckingApiKey(false);
+        return;
+      }
+      if (typeof window !== 'undefined' && 'aistudio' in window) {
+        try {
+          const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+          if (!hasKey) {
+            setNeedsApiKey(true);
+          }
+        } catch (e) {
+          console.error("Failed to check API key", e);
+        }
+      }
+      setCheckingApiKey(false);
+    };
+    checkKey();
+  }, []);
+
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [mapUrl, setMapUrl] = useState("");
   const [qrColor, setQrColor] = useState("#6366F1");
@@ -571,6 +595,86 @@ export default function App() {
     }
   };
 
+  if (checkingApiKey) {
+    return (
+      <div className="min-h-screen bg-[#F3F4F6] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
+  if (needsApiKey) {
+    return (
+      <div className="min-h-screen bg-[#F3F4F6] flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center flex flex-col items-center">
+          <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto text-indigo-600 mb-6 relative">
+            <Settings size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">របៀបប្រើប្រាស់ដោយឥតគិតថ្លៃ (Free)</h2>
+          <p className="text-gray-600 text-sm leading-relaxed mb-6">
+            កម្មវិធីនេះមានកូតាឥតគិតថ្លៃ (Free Quota) កំណត់ប្រចាំថ្ងៃ។ ប្រសិនបើកូតាពីប្រព័ន្ធអស់ លោកអ្នកអាចប្រើប្រាស់វាដោយឥតគិតថ្លៃ ១០០% ដោយប្រើ <strong>Gemini API Key</strong> ផ្ទាល់ខ្លួនបាន។
+          </p>
+          <div className="w-full space-y-3 pt-2 text-left bg-indigo-50 p-4 rounded-2xl mb-6">
+             <h3 className="text-sm font-bold text-indigo-900">ដើម្បីទទួលបាន API Key ឥតគិតថ្លៃ៖</h3>
+             <ol className="list-decimal pl-5 text-sm text-indigo-800 space-y-1">
+               <li>ចូលទៅកាន់ <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-semibold hover:text-indigo-600">aistudio.google.com/app/apikey</a></li>
+               <li>ចុចប៊ូតុង "Create API key"</li>
+               <li>យក Key នោះមកជ្រើសរើសនៅទីនេះ ឬដាក់ក្នុង Settings</li>
+             </ol>
+          </div>
+          <div className="w-full space-y-4">
+            {(typeof window !== 'undefined' && 'aistudio' in window) && (
+              <button
+                onClick={async () => {
+                  try {
+                    await (window as any).aistudio.openSelectKey();
+                    setNeedsApiKey(false); // Assume successful
+                    localStorage.setItem('skip_api_key_prompt', 'true');
+                  } catch (e) {
+                    console.error(e);
+                    setNeedsApiKey(false); // Fallback
+                    localStorage.setItem('skip_api_key_prompt', 'true');
+                  }
+                }}
+                className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
+              >
+                ជ្រើសរើស API Key ស្វ័យប្រវត្តិ
+              </button>
+            )}
+            
+            <div className="space-y-2 text-left">
+              <label className="text-sm font-bold text-gray-700 select-none">បញ្ចូល API Key ឥតគិតថ្លៃ (Free API Key)</label>
+              <input 
+                type="password"
+                value={localApiKey}
+                onChange={(e) => {
+                  setLocalApiKey(e.target.value);
+                  if (e.target.value.trim()) {
+                    localStorage.setItem('gemini_api_key', e.target.value.trim());
+                  } else {
+                    localStorage.removeItem('gemini_api_key');
+                  }
+                }}
+                placeholder="AIzaSy..."
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 transition-all font-mono"
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                localStorage.setItem('skip_api_key_prompt', 'true');
+                setNeedsApiKey(false);
+              }}
+              className="w-full py-3.5 bg-white border-2 border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 transition-colors mt-2"
+            >
+              បន្តទៅមុខ (Continue)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F3F4F6] text-[#374151] font-sans pt-20">
       {/* Navigation Bar */}
@@ -742,6 +846,24 @@ export default function App() {
                 <p className="text-gray-600 text-sm leading-relaxed text-center">
                   អ្នកបានប្រើប្រាស់អស់កូតាឥតគិតថ្លៃសម្រាប់ពេលនេះហើយ។ កូតានឹងកំណត់ឡើងវិញក្នុងពេលឆាប់ៗខាងមុខ។
                 </p>
+                {/* AI Studio specific API key selection flow */}
+                {(typeof window !== 'undefined' && 'aistudio' in window) && (
+                  <div className="flex justify-center mt-2 mb-4">
+                    <button 
+                      onClick={async () => {
+                        try {
+                          await (window as any).aistudio.openSelectKey();
+                          setErrorModal(null);
+                        } catch (err) {
+                          console.error("Failed to open select key dialog", err);
+                        }
+                      }}
+                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors"
+                    >
+                      ជ្រើសរើស API Key ពី Google Cloud (Select Key)
+                    </button>
+                  </div>
+                )}
                 {errorModal?.message && (
                   <div className="p-3 bg-red-50 rounded-xl border border-red-100 text-red-600 text-[10px] break-all">
                     Detail: {errorModal.message}
@@ -1629,10 +1751,18 @@ export default function App() {
                 </div>
                 
                 <div className="space-y-4">
+                  <div className="bg-indigo-50 p-4 rounded-xl">
+                    <h4 className="text-sm font-bold text-indigo-900 mb-2">របៀបយក API Key ឥតគិតថ្លៃ៖</h4>
+                    <ol className="list-decimal pl-4 text-xs text-indigo-800 space-y-1">
+                      <li>ចូលទៅកាន់ <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-semibold">aistudio.google.com</a></li>
+                      <li>ចុច "Create API key"</li>
+                      <li>យកវាមកបញ្ចូលក្នុងប្រអប់ខាងក្រោម</li>
+                    </ol>
+                  </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">Custom Gemini API Key</label>
+                    <label className="text-sm font-bold text-gray-700">Gemini API Key</label>
                     <p className="text-xs text-gray-500">
-                      If the default quota is exceeded or you want to use your own Google Gemini API key.
+                      បញ្ចូល API Key លោកអ្នកដើម្បីប្រើឥតគិតថ្លៃ ១០០%។
                     </p>
                     <input 
                       type="password"
@@ -1642,6 +1772,29 @@ export default function App() {
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:border-[#6366F1] focus:ring-4 focus:ring-[#6366F1]/5 transition-all"
                     />
                   </div>
+                  
+                  {(typeof window !== 'undefined' && 'aistudio' in window) && (
+                    <div className="pt-2">
+                      <div className="relative flex items-center mb-4">
+                        <div className="flex-grow border-t border-gray-200"></div>
+                        <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-medium">ឬជ្រើសរើសដោយស្វ័យប្រវត្តិ</span>
+                        <div className="flex-grow border-t border-gray-200"></div>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            await (window as any).aistudio.openSelectKey();
+                            setShowSettingsModal(false);
+                          } catch (err) {
+                            console.error("Failed to open select key dialog", err);
+                          }
+                        }}
+                        className="w-full py-3 bg-[#6366F1] text-white rounded-2xl font-bold hover:bg-indigo-600 transition-all active:scale-95 text-sm"
+                      >
+                        ជ្រើសរើស API Key ពី AI Studio (ស្វ័យប្រវត្តិ)
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-4 flex gap-3">
